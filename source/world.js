@@ -21,7 +21,7 @@ class World {
 		for (let userId in this.users) {
 			const user = this.users[userId];
 			if (user.name === username) {
-				return userId;
+				return parseInt(userId);
 			}
 		}
 		this.users.push(this.userFactory(this.userId, username));
@@ -125,7 +125,7 @@ class World {
 	}
 	createPlanetStarter(userId) {
 		const user = this.users[userId];
-		const planet = this.createPlanet(0, null, 1000 * userId, 0, 250);
+		const planet = this.createPlanet(0, null, 600 * userId, 0, 250);
 		this.createUnit(userId, 1, planet.id, 0, planet.radius, true);
 		this.createUnit(userId, 3, planet.id, Math.atan(50 / planet.radius), planet.radius, true);
 		//this.createUnit(userId, 0, planet.id, Math.PI/*Math.atan(90 / planet.radius)*/, planet.radius, true);

@@ -1,6 +1,9 @@
 const http = require('http');
 const fs = require('fs');
 const WebSocketServer = require('websocket').server;
+const { PerformanceObserver, performance } = require('perf_hooks');
+
+const Session = require('./source/session.js')
 
 const ipLog = {};
 
@@ -71,7 +74,39 @@ const wsServer = new WebSocketServer({
 	httpServer: httpServer,
 	autoAcceptConnections: false,
 });
- 
+
+const sessions = {};
+
+function setImmediatePromise() {
+	return new Promise((resolve) => {
+		setImmediate(resolve);
+	});
+}
+
+let date = performance.now();
+let frame = 0;
+let fps = 60;
+async function tickSessions() {
+	while (true) {
+		let now = performance.now();
+		if (now < date + frame * 1000 / fps) {
+			await setImmediatePromise();
+		}
+		else {
+			for (let sessionId in sessions) {
+				sessions[sessionId].tick();
+			}
+			frame++;
+			if (frame >= fps) {
+				frame -= 60;
+				date += 1000;
+			}
+		}
+	}
+}
+
+tickSessions();
+
 wsServer.on('request', function(request) {
 	if (!request.requestedProtocols.includes('pyra-gala-server')) {
 		request.reject(undefined, 'Unspecified protocol');
@@ -82,18 +117,37 @@ wsServer.on('request', function(request) {
 		ipLog['ws-' + connection.remoteAddress] = true;
 		console.log('ws: ' + connection.remoteAddress);
 	}
-	connection.on('message', function(message) {
+	
+	let connected = undefined;
+	let userId = undefined;
+	let username = undefined;
+	connection.on('message', (message) => {
 		if (message.type === 'utf8') {
-			console.log(request.remoteAddress + ' received message: ' + message.utf8Data);
-			connection.sendUTF('yooooo, wassup wassup');
-			//connection.sendUTF(message.utf8Data);
-		}
-		else if (message.type === 'binary') {
-			console.log(request.remoteAddress + ' received binary message of ' + message.binaryData.length + ' bytes');
-			connection.sendBytes(message.binaryData);
+			const ue = message.utf8Data;
+			if (typeof connected !== 'number') {
+				let split = ue.split(',', 4);
+				if (split[0] === 'c') {
+					let sessionId = parseInt(split[1]);
+					if (!sessions[sessionId]) {
+						sessions[sessionId] = new Session();
+					}
+					connected = sessionId;
+					username = split[2];
+					userId = sessions[sessionId].connect(username, (e) => {
+						//console.log('sending back: ' + e);
+						connection.sendUTF(e.toString());
+					});
+				}
+			}
+			else {
+				sessions[connected].sendUserEvent(username, message.utf8Data);
+			}
+			//console.log(request.remoteAddress + ' received message: ' + message.utf8Data);
 		}
 	});
 	connection.on('close', function(reasonCode, description) {
-		console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
+		if (typeof connected === 'number') {
+			userId = sessions[connected].disconnect(username);
+		}
 	});
 });

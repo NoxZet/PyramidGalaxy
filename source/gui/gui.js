@@ -9,8 +9,11 @@ class GUI {
 		this.units = [];
 		this.selected = undefined;
 		this.selectedUI = [];
-		this.vx = -400;
+		
+		this.viewDir = undefined;
+		this.vx = -400+userId*600;
 		this.vy = -400;
+		
 		const self = this;
 		proxy.addEventCallback((event) => {
 			self.eventCallback(event);
@@ -36,7 +39,7 @@ class GUI {
 				}
 			break;
 			case 'ui':
-				if (this.selected === event.unit) {
+				if (this.selected === parseInt(event.unit)) {
 					this.selectedUI = split;
 				}
 			break;
@@ -87,6 +90,15 @@ class GUI {
 	}
 	
 	draw(ctx, frame) {
+		if (this.viewDir) {
+			const viewSpeed = 5;
+			switch (this.viewDir) {
+				case 'ArrowLeft': this.vx -= viewSpeed; break;
+				case 'ArrowRight': this.vx += viewSpeed; break;
+				case 'ArrowUp': this.vy -= viewSpeed; break;
+				case 'ArrowDown': this.vy += viewSpeed; break;
+			}
+		}
 		const width = ctx.canvas.width;
 		const height = ctx.canvas.height;
 		ctx.clearRect(0, 0, width, height);
@@ -105,13 +117,13 @@ class GUI {
 		this.drawUI(frame);
 	}
 	
-	click(button, x, y) {
+	click(button, type, x, y) {
 		x += this.vx;
 		y += this.vy;
 		if (button === 'left') {
 			for (let unitId in this.units) {
 				const unit = this.units[unitId];
-				if (unit.isPlanet) {
+				if (unit.isPlanet || unit.owner !== this.userId) {
 					continue;
 				}
 				const coords = unit.getDrawCoords(this.units);
@@ -152,6 +164,16 @@ class GUI {
 					ty = dist;
 				}
 				this.proxy.sendUserEvent(new EventServer(this.selected, 'move', tx + ';' + ty));
+			}
+		}
+	}
+	
+	key(button, type) {
+		if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(button)) {
+			if (type === 'down') {
+				this.viewDir = button;
+			} else {
+				this.viewDir = undefined;
 			}
 		}
 	}

@@ -13,6 +13,9 @@ class EventServer {
 	get meta() {
 		return (typeof this._meta === 'string' || typeof this._meta === 'number') ? this._meta : '';
 	}
+	toString() {
+		return `${this.unit},${this.action},${this.meta}`;
+	}
 }
 
 if (typeof module === 'object' && typeof module.exports === 'object') {
