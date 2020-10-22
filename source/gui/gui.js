@@ -9,10 +9,13 @@ class GUI {
 		this.units = [];
 		this.selected = undefined;
 		this.selectedUI = [];
+		this.loading = undefined;
 		
 		this.viewDir = undefined;
 		this.vx = -400+userId*600;
 		this.vy = -400;
+		
+		this.cursor = undefined;
 		
 		const self = this;
 		proxy.addEventCallback((event) => {
@@ -46,16 +49,53 @@ class GUI {
 		}
 	}
 	
+	loadResource(dir='cancel', unit) {
+		switch (dir) {
+			case 'cancel':
+				this.proxy.sendUserEvent(new EventServer(unit, 'load', 'c'));
+				this.loading = undefined;
+			break;
+			case 'load': case 'unload':
+				this.loading = [dir, unit];
+			break;
+			case 'select':
+				if (this.loading[1] !== unit) {
+					this.proxy.sendUserEvent(new EventServer(this.loading[1], this.loading[0], unit));
+					this.loading = undefined;
+				}
+				else {
+					this.loading = undefined;
+				}
+			break;
+		}
+	}
+	
 	drawUI(frame) {
 		const self = this;
-		if (this.selectedUI.length > 0) {
+		if (this.selected && this.selectedUI.length > 0) {
 			const unit = this.units[this.selected];
 			let ui = '';
 			switch (unit.type) {
 				case 0:
 					ui += Math.round(this.selectedUI[0]) + '/' + Math.round(this.selectedUI[1]) + ' metal<br>';
-					ui += Math.round(this.selectedUI[2]) + '/' + Math.round(this.selectedUI[3]) + ' methane';
+					ui += Math.round(this.selectedUI[2]) + '/' + Math.round(this.selectedUI[3]) + ' methane<br>';
+					ui += (this.selectedUI[4] > 0
+						? `<a href='#' id='uireset'>Cancel loading</a>`
+						: `<a href='#' id='uiload'>Load from</a> | <a href='#' id='uiunload'>Unload into</a>`
+					);
 					document.getElementById('hudBottom').innerHTML = ui;
+					if (this.selectedUI[4] > 0) {
+						document.getElementById('uireset').addEventListener('mousedown', () => {
+							self.loadResource('cancel', self.selected);
+						});
+					} else {
+						document.getElementById('uiload').addEventListener('mousedown', () => {
+							self.loadResource('load', self.selected);
+						});
+						document.getElementById('uiunload').addEventListener('mousedown', () => {
+							self.loadResource('unload', self.selected);
+						});
+					}
 				break;
 				case 1:
 					ui += Math.round(this.selectedUI[0]) + '/' + Math.round(this.selectedUI[1]) + ' metal';
@@ -114,21 +154,48 @@ class GUI {
 				ctx.stroke();
 			}
 		}
+		if (this.cursor && this.loading) {
+			ctx.beginPath();
+			ctx.arc(this.cursor[0], this.cursor[1], 10, 0, 2 * Math.PI);
+			ctx.strokeStyle = 'blue';
+			ctx.stroke();
+		}
 		this.drawUI(frame);
 	}
 	
-	click(button, type, x, y) {
+	unitAt(x, y) {
+		const unitIds = Object.keys(this.units).reverse();
+		for (let unitId of unitIds) {
+			const unit = this.units[unitId];
+			if (unit.isPlanet || unit.owner !== this.userId) {
+				continue;
+			}
+			const coords = unit.getDrawCoords(this.units);
+			if (Math.sqrt((x-coords[0])*(x-coords[0]) + (y-coords[1])*(y-coords[1])) <= 15) {
+				return parseInt(unitId);
+			}
+		}
+	}
+	
+	mouseClick(button, type, x, y) {
+		if (type !== 'down') {
+			return;
+		}
 		x += this.vx;
 		y += this.vy;
 		if (button === 'left') {
-			for (let unitId in this.units) {
-				const unit = this.units[unitId];
-				if (unit.isPlanet || unit.owner !== this.userId) {
-					continue;
+			let unitId = this.unitAt(x, y);
+			if (unitId === undefined) {
+				this.loading = undefined;
+				this.selected = undefined;
+				this.proxy.sendUserEvent(new EventServer('', 'select'));
+			}
+			else {
+				if (this.loading) {
+					this.loadResource('select', unitId);
 				}
-				const coords = unit.getDrawCoords(this.units);
-				if (Math.sqrt((x-coords[0])*(x-coords[0]) + (y-coords[1])*(y-coords[1])) <= 15) {
-					this.selected = parseInt(unitId);
+				else {
+					this.selected = unitId;
 					this.selectedUI = [];
 					this.proxy.sendUserEvent(new EventServer(this.selected, 'select'));
 				}
@@ -166,6 +233,10 @@ class GUI {
 				this.proxy.sendUserEvent(new EventServer(this.selected, 'move', tx + ';' + ty));
 			}
 		}
+	}
+	
+	mouseMove(x, y) {
+		this.cursor = (x === undefined) ? undefined : [x, y];
 	}
 	
 	key(button, type) {

@@ -68,7 +68,7 @@ class World {
 					}
 				break;
 				case 'queue':
-					let queue = parseInt(ue.meta);
+					let queue = parseInt(args[0]);
 					if (isNaN(queue) || queue < -1) {
 						queue = 0;
 					}
@@ -77,23 +77,31 @@ class World {
 				case 'select':
 					this.users[user].selected = parseInt(ue.unit);
 				break;
-				case 'metalLoad':
-					let loadObject = this.objects[ue.meta];
-					if (loadObject && object.metalCanLoad && loadObject.metalCanUnload) {
-						// add range check
-						loadObject.loading = undefined;
-						object.loading = 1;
-						object.loadingTarget = ue.meta;
+				case 'load': case 'unload':
+					if (args[0] === 'c') {
+						object.loading = undefined;
+					}
+					else {
+						let unloading = ue.action === 'unload';
+						let otherObject = this.objects[args[0]];
+						if (otherObject && otherObject.owner === user && otherObject !== object && (
+							(!unloading && object.internal.resource[0].canLoad && otherObject.internal.resource[0].canUnload)
+							||
+							(unloading && object.internal.resource[0].canUnload && otherObject.internal.resource[0].canLoad)
+						)) {
+							// TODO: add range check
+							otherObject.loading = undefined;
+							object.loading = unloading ? 2 : 1;
+							object.loadingTarget = args[0];
+						}
 					}
 				break;
-				case 'metalUnload':
-					let unloadObject = this.objects[ue.meta];
-					if (unloadObject && object.metalCanUnload && unloadObject.metalCanLoad) {
-						// add range check
-						unloadObject.loading = undefined;
-						object.loading = 2;
-						object.loadingTarget = ue.meta;
-					}
+			}
+		}
+		else {
+			switch (ue.action) {
+				case 'select':
+					this.users[user].selected = undefined;
 				break;
 			}
 		}
@@ -128,7 +136,7 @@ class World {
 		const planet = this.createPlanet(0, null, 600 * userId, 0, 250);
 		this.createUnit(userId, 1, planet.id, 0, planet.radius, true);
 		this.createUnit(userId, 3, planet.id, Math.atan(50 / planet.radius), planet.radius, true);
-		//this.createUnit(userId, 0, planet.id, Math.PI/*Math.atan(90 / planet.radius)*/, planet.radius, true);
+		this.createUnit(userId, 0, planet.id, Math.atan(90 / planet.radius), planet.radius, true);
 	}
 	sendUI(frame) {
 		for (let userId in this.users) {
@@ -156,6 +164,29 @@ class World {
 			}
 		}
 	}
+	resourceTransfer(loaders, unloaders, loaderId, unloaderId) {
+		let loader = loaders[loaderId][0];
+		let unloader = unloaders[unloaderId][0];
+		let loaderTransfer = loaders[loaderId][1];
+		let unloaderTransfer = unloaders[unloaderId][1];
+		
+		let transferActual = Math.min(loaderTransfer, unloaderTransfer);
+		
+		if (transferActual === loaderTransfer) {
+			delete loaders[loaderId];
+		} else {
+			loaders[loaderId][1] -= transferActual;
+		}
+		
+		if (transferActual === unloaderTransfer) {
+			delete unloaders[unloaderId];
+		} else {
+			unloaders[unloaderId][1] -= transferActual;
+		}
+		
+		loader.internal.resource[0].amount += transferActual;
+		unloader.internal.resource[0].amount -= transferActual;
+	}
 	resourceLoad(frame, res) {
 		if (frame % 12 !== 0) {
 			return;
@@ -175,19 +206,50 @@ class World {
 			if (objRes.canUnload && objRes.amount > 0) {
 				unloaders[objectId] = [object, Math.min(object.size, objRes.amount)];
 			}
-			if (object.internal.loading > 0) {
+			if (object.loading > 0) {
 				manual[objectId] = object;
 			}
 		}
-		/*while (metalManual.length > 0) {
-			let objectId = Object.keys(metalManual)[0];
-			let object = metalManual[objectId];
-			if (object.loading === 1) {
-				resourceFindClose() {
-					
-				}
+		// Manual loading
+		while (Object.keys(manual).length > 0) {
+			let objectId = Object.keys(manual)[0];
+			let object = manual[objectId];
+			let otherId = object.loadingTarget;
+			let other = this.objects[otherId];
+			
+			const objectCoords = object.getCoords(this.objects);
+			const otherCoords = other.getCoords(this.objects);
+			const xdif = objectCoords[0]-otherCoords[0];
+			const ydif = objectCoords[1]-otherCoords[1];
+			const distance = Math.sqrt(xdif*xdif + ydif*ydif);
+			if (distance > 50) {
+				object.loading = undefined;
+				object.loadingTarget = undefined;
+				delete manual[objectId];
+				continue;
 			}
-		}*/
+			
+			// Picking behavior - manual load/unload
+			let loaderId = object.loading === 1 ? objectId : otherId;
+			let unloaderId = object.loading === 1 ? otherId : objectId;
+
+			// Transfer
+			let loader = loaders[loaderId];
+			let unloader = unloaders[unloaderId];
+			if (loader && loader[1] > 0 && unloader && unloader[1] > 0) {
+				this.resourceTransfer(loaders, unloaders, loaderId, unloaderId);
+			} else {
+				delete manual[objectId];
+			}
+			
+			if (
+				(object.loading === 1 && !loaders[objectId])
+				||
+				(object.loading !== 1 && !unloaders[objectId])
+			) {
+				delete manual[objectId];
+			}
+		}
 		// Only dealing with autoloading now, remove unloaders without autounloading
 		for (let objectId of Object.keys(unloaders)) {
 			if (!unloaders[objectId][0].internal.resource[0].autoUnload) {
@@ -208,26 +270,7 @@ class World {
 				delete loaders[objectId];
 				continue;
 			}
-			let other = unloaders[otherId][0];
-			let transferOther = unloaders[otherId][1];
-			let transferActual = Math.min(transfer, transferOther);
-			
-			if (transferActual === transfer) {
-				delete loaders[objectId];
-			}
-			else {
-				loaders[objectId][1] -= transferActual;
-			}
-			
-			if (transferActual === transferOther) {
-				delete unloaders[otherId];
-			}
-			else {
-				unloaders[otherId][1] -= transferActual;
-			}
-			
-			object.internal.resource[0].amount += transferActual;
-			other.internal.resource[0].amount -= transferActual;
+			this.resourceTransfer(loaders, unloaders, objectId, otherId);
 		}
 	}
 	tick(frame) {

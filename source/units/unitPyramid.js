@@ -66,7 +66,7 @@ class UnitPyramid {
 		}
 	}
 	get eventUI() {
-		return `${this.resource[0].amount};${this.resource[0].capacity};${this.resource[1].amount};${this.resource[1].capacity}`;
+		return `${this.resource[0].amount};${this.resource[0].capacity};${this.resource[1].amount};${this.resource[1].capacity};${this.unit.loading > 0 ? 1 : 0}`;
 	}
 }
 
