@@ -24,7 +24,7 @@ class World {
 				return parseInt(userId);
 			}
 		}
-		this.users.push(this.userFactory(this.userId, username));
+		this.users[this.userId] = this.userFactory(this.userId, username);
 		this.createPlanetStarter(this.userId);
 		this.userId++;
 		return this.userId - 1;
@@ -156,26 +156,27 @@ class World {
 			}
 		}
 	}
-	resourceLoad(frame) {
+	resourceLoad(frame, res) {
 		if (frame % 12 !== 0) {
 			return;
 		}
-		let metalLoaders = {};
-		let metalUnloaders = {};
-		let metalManual = {};
+		let loaders = {};
+		let unloaders = {};
+		let manual = {};
 		for (let objectId in this.objects) {
 			let object = this.objects[objectId];
 			if (object.isPlanet) {
 				continue;
 			}
-			if (object.internal.metalCanLoad && object.internal.metal < object.internal.metalCapacity) {
-				metalLoaders[objectId] = [object, Math.min(object.size, object.internal.metalCapacity-object.internal.metal)];
+			let objRes = object.internal.resource[res];
+			if (objRes.canLoad && objRes.amount < objRes.capacity) {
+				loaders[objectId] = [object, Math.min(object.size, objRes.capacity-objRes.amount)];
 			}
-			if (object.internal.metalCanUnload && object.internal.metal > 0) {
-				metalUnloaders[objectId] = [object, Math.min(object.size, object.internal.metal)];
+			if (objRes.canUnload && objRes.amount > 0) {
+				unloaders[objectId] = [object, Math.min(object.size, objRes.amount)];
 			}
 			if (object.internal.loading > 0) {
-				metalManual[objectId] = object;
+				manual[objectId] = object;
 			}
 		}
 		/*while (metalManual.length > 0) {
@@ -188,47 +189,45 @@ class World {
 			}
 		}*/
 		// Only dealing with autoloading now, remove unloaders without autounloading
-		for (let objectId of Object.keys(metalUnloaders)) {
-			if (!metalUnloaders[objectId][0].internal.metalAutoUnload) {
-				delete metalUnloaders[objectId];
+		for (let objectId of Object.keys(unloaders)) {
+			if (!unloaders[objectId][0].internal.resource[0].autoUnload) {
+				delete unloaders[objectId];
 			}
 		}
 		// Go over loaders and try to load autoloaders
-		let stop = 5;
-		while (Object.keys(metalLoaders).length > 0 && stop > 0) {
-			stop--;
-			let objectId = Object.keys(metalLoaders)[0];
-			let object = metalLoaders[objectId][0];
-			let transfer = metalLoaders[objectId][1];
-			if (!object.internal.metalAutoLoad) {
-				delete metalLoaders[objectId];
+		while (Object.keys(loaders).length > 0) {
+			let objectId = Object.keys(loaders)[0];
+			let object = loaders[objectId][0];
+			let transfer = loaders[objectId][1];
+			if (!object.internal.resource[0].autoLoad) {
+				delete loaders[objectId];
 				continue;
 			}
-			let otherId = this.resourceFindClose(object, metalUnloaders);
+			let otherId = this.resourceFindClose(object, unloaders);
 			if (!otherId) {
-				delete metalLoaders[objectId];
+				delete loaders[objectId];
 				continue;
 			}
-			let other = metalUnloaders[otherId][0];
-			let transferOther = metalUnloaders[otherId][1];
+			let other = unloaders[otherId][0];
+			let transferOther = unloaders[otherId][1];
 			let transferActual = Math.min(transfer, transferOther);
 			
 			if (transferActual === transfer) {
-				delete metalLoaders[objectId];
+				delete loaders[objectId];
 			}
 			else {
-				metalLoaders[objectId][1] -= transferActual;
+				loaders[objectId][1] -= transferActual;
 			}
 			
 			if (transferActual === transferOther) {
-				delete metalUnloaders[otherId];
+				delete unloaders[otherId];
 			}
 			else {
-				metalUnloaders[otherId][1] -= transferActual;
+				unloaders[otherId][1] -= transferActual;
 			}
 			
-			object.internal.metal += transferActual;
-			other.internal.metal -= transferActual;
+			object.internal.resource[0].amount += transferActual;
+			other.internal.resource[0].amount -= transferActual;
 		}
 	}
 	tick(frame) {
@@ -249,7 +248,8 @@ class World {
 				}
 			}
 		}
-		this.resourceLoad(frame);
+		this.resourceLoad(frame, 0);
+		this.resourceLoad(frame, 1);
 		this.sendUI(frame);
 	}
 	handleObjEvent(object, objEvent) {

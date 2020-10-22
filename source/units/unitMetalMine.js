@@ -1,25 +1,31 @@
 class UnitMetalMine {
 	constructor() {
-		this.metal = 0;
 		this.working = false;
-		this.metalAutoUnload = true;
-		this.metalCanLoad = true;
-		this.metalCanUnload = true;
+		const self = this;
+		this.resource = [{
+			amount: 0,
+			canLoad: true,
+			canUnload: true,
+			autoUnload: true,
+			get capacity() {
+				return self.metalCapacity;
+			},
+		}, []];
 	}
 	get metalCapacity() {
 		return this.unit.size * 200;
 	}
 	tick(frame) {
 		const metalMiningSpeed = this.unit.size;
-		if (frame % 3 === 0) {
-			if (this.metal < this.metalCapacity) {
+		if (frame % 12 === 0) {
+			if (this.resource[0].amount < this.resource[0].capacity) {
 				this.working = true;
-				this.metal = Math.min(this.metal + metalMiningSpeed, this.metalCapacity);
+				this.resource[0].amount = Math.min(this.resource[0].amount + metalMiningSpeed, this.resource[0].capacity);
 			}
 		}
 	}
 	get eventUI() {
-		return `${this.metal};${this.metalCapacity}`;
+		return `${this.resource[0].amount};${this.resource[0].capacity}`;
 	}
 }
 
