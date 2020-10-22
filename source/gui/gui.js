@@ -53,20 +53,20 @@ class GUI {
 			let ui = '';
 			switch (unit.type) {
 				case 0:
-					ui += this.selectedUI[0] + '/' + this.selectedUI[1] + ' metal<br>';
-					ui += this.selectedUI[2] + '/' + this.selectedUI[3] + ' methane';
+					ui += Math.round(this.selectedUI[0]) + '/' + Math.round(this.selectedUI[1]) + ' metal<br>';
+					ui += Math.round(this.selectedUI[2]) + '/' + Math.round(this.selectedUI[3]) + ' methane';
 					document.getElementById('hudBottom').innerHTML = ui;
 				break;
 				case 1:
-					ui += this.selectedUI[0] + '/' + this.selectedUI[1] + ' metal';
+					ui += Math.round(this.selectedUI[0]) + '/' + Math.round(this.selectedUI[1]) + ' metal';
 					document.getElementById('hudBottom').innerHTML = ui;
 				break;
 				case 2:
-					ui += this.selectedUI[0] + '/' + this.selectedUI[1] + ' methane';
+					ui += Math.round(this.selectedUI[0]) + '/' + Math.round(this.selectedUI[1]) + ' methane';
 					document.getElementById('hudBottom').innerHTML = ui;
 				break;
 				case 3:
-					ui += this.selectedUI[0] + '/' + this.selectedUI[1] + ' metal<br>';
+					ui += Math.round(this.selectedUI[0]) + '/' + Math.round(this.selectedUI[1]) + ' metal<br>';
 					const queue = parseInt(this.selectedUI[2]);
 					ui += (queue === -1 ? 'infinite' : queue) + ' queued<br>';
 					ui += `<a href='#' id='uireset'>reset</a> | <a href='#' id='uiinfinite'>infinite</a> | <a href='#' id='uiremove'>remove 1</a> | <a href='#' id='uiadd'>add 1</a><br>`;

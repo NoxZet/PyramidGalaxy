@@ -44,8 +44,9 @@ class GUIUnit extends GUIObject {
 			y0
 		);
 		
-		let strokeColor = ['blue', 'red', 'green', 'yellow'][this.owner];
+		let strokeColor = ['blue', 'red', 'green', 'yellow', 'orange', 'purple', 'cyan'][this.owner];
 		ctx.strokeStyle = strokeColor ? strokeColor : 'black';
+		ctx.lineWidth = 2;
 		ctx.stroke();
 		let fillColor = ['#eee', '#b38847', '#69b38f', '#999'][this.type];
 		ctx.fillStyle = fillColor ? fillColor : 'white';
