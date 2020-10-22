@@ -16,24 +16,46 @@ function gameFrame(proxy) {
 		}
 		tickFunction();
 		
-		cvs.addEventListener('mousedown', (e) => {
+		// Mouse
+		function mouseClickHandler(e, type) {
 			if (e.button === 0) {
-				gui.click('left', 'down', e.offsetX, e.offsetY);
+				gui.mouseClick('left', type, e.offsetX, e.offsetY);
 			}
 			else if (e.button === 2) {
-				gui.click('right', 'down', e.offsetX, e.offsetY);
+				gui.mouseClick('right', type, e.offsetX, e.offsetY);
 			};
+		}
+		
+		cvs.addEventListener('mousedown', (e) => {
+			return mouseClickHandler(e, 'down');
+		});
+		
+		cvs.addEventListener('mouseup', (e) => {
+			return mouseClickHandler(e, 'up');
+		});
+		
+		cvs.addEventListener('mousemove', (e) => {
+			gui.mouseMove(e.offsetX, e.offsetY);
 			return false;
 		});
 		
-		window.addEventListener('keydown', (e) => {
-			gui.key(e.code, 'down');
+		cvs.addEventListener('mouseleave', (e) => {
+			gui.mouseMove(undefined, undefined);
 			return false;
+		});
+		
+		// Keyboard
+		function keyHandler(e, type) {
+			gui.key(e.code, type);
+			return false;
+		}
+		
+		window.addEventListener('keydown', (e) => {
+			return keyHandler(e, 'down');
 		});
 		
 		window.addEventListener('keyup', (e) => {
-			gui.key(e.code, 'up');
-			return false;
+			return keyHandler(e, 'up');
 		});
 	}).catch((e) => {
 		console.log(e);
