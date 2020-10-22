@@ -21,6 +21,7 @@ class GUIPlanet extends GUIObject {
 		ctx.arc(x - vx, y - vy, this.radius, 0, 2 * Math.PI);
 		
 		ctx.strokeStyle = 'black';
+		ctx.lineWidth = 2;
 		ctx.stroke();
 		ctx.fillStyle = '#86cbfc';
 		ctx.fill();
