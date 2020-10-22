@@ -1,6 +1,5 @@
 class UnitPyraFactory {
 	constructor() {
-		this.metal = 0;
 		this.working = false;
 		/**
 		 * 0 - not queued
@@ -9,30 +8,35 @@ class UnitPyraFactory {
 		 */
 		this.queue = 0;
 		this.progress = 0;
-		this.metalAutoLoad = true;
-		this.metalCanLoad = true;
-		this.metalCanUnload = true;
+		const self = this;
+		this.resource = [{
+			amount: 0,
+			canLoad: true,
+			canUnload: true,
+			autoLoad: true,
+			get capacity() {
+				return self.metalCapacity;
+			},
+		}, []];
 	}
 	get metalCapacity() {
 		return this.unit.size * 200;
 	}
 	get progressNeeded() {
-		return 240;
+		return 100;
 	}
 	tick(frame) {
 		// ticks needed at size 1 to complete
 		const progressNeeded = this.progressNeeded;
-		// 1/metal consumed per progress
-		const metalDivProgress = 12;
 		this.working = false;
-		if (this.queue !== 0) {
-			let potential = Math.min(this.unit.size, this.metal / metalDivProgress);
+		if (this.queue !== 0 && frame % 12 === 0) {
+			let potential = Math.min(this.unit.size, this.resource[0].amount);
 			let built = this.progress + potential >= progressNeeded;
 			if (this.queue === 1 && built) {
 				potential = progressNeeded - this.progress;
 			}
 			this.progress += potential;
-			this.metal -= potential / metalDivProgress;
+			this.resource[0].amount -= potential;
 			if (potential > 0) {
 				this.working = true;
 			}
@@ -49,7 +53,7 @@ class UnitPyraFactory {
 		this.queue = queue;
 	}
 	get eventUI() {
-		return `${Math.round(this.metal)};${this.metalCapacity};${this.queue};${this.progress*100/this.progressNeeded}`;
+		return `${this.resource[0].amount};${this.resource[0].capacity};${this.queue};${this.progress*100/this.progressNeeded}`;
 	}
 }
 

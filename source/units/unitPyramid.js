@@ -3,10 +3,22 @@ class UnitPyramid {
 		this.canMove = true;
 		this.xtarget = undefined;
 		this.ytarget = undefined;
-		this.metal = 0;
-		this.methane = 0;
-		this.metalCanLoad = true;
-		this.metalCanUnload = true;
+		const self = this;
+		this.resource = [{
+			amount: 0,
+			canLoad: true,
+			canUnload: true,
+			get capacity() {
+				return self.metalCapacity;
+			},
+		}, {
+			amount: 0,
+			canLoad: true,
+			canUnload: true,
+			get capacity() {
+				return self.methaneCapacity;
+			},
+		}];
 	}
 	get metalCapacity() {
 		return this.unit.size * 200;
@@ -54,7 +66,7 @@ class UnitPyramid {
 		}
 	}
 	get eventUI() {
-		return `${this.metal};${this.metalCapacity};${this.methane};${this.methaneCapacity}`;
+		return `${this.resource[0].amount};${this.resource[0].capacity};${this.resource[1].amount};${this.resource[1].capacity}`;
 	}
 }
 
