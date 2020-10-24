@@ -60,6 +60,22 @@ class Unit {
 	eventQueue(queue) {
 		return this.internal.eventQueue ? this.internal.eventQueue(queue) : undefined;
 	}
+	eventMove(x, y, planet) {
+		return this.internal.eventMove ? this.internal.eventMove(x, y, planet) : undefined;
+	}
+	eventLoad(action, arg) {
+		if (this.internal.eventLoad && !this.internal.eventLoad(action, arg)) {
+			switch (action) {
+				case 'load': case 'unload':
+					this.loading = action === 'unload' ? 2 : 1;
+					this.loadingTarget = arg;
+				break;
+				case 'cancel': case 'range':
+					this.loading = undefined;
+				break;
+			}
+		}
+	}
 	get isPlanet() {
 		return false;
 	}
