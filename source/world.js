@@ -58,13 +58,10 @@ class World {
 			let args = ue.meta.toString().split(';');
 			switch (ue.action) {
 				case 'move':
-					if (object.internal && object.internal.canMove) {
-						let xtarget = parseFloat(args[0]);
-						let ytarget = parseFloat(args[1]);
-						if (!isNaN(xtarget) && !isNaN(ytarget)) {
-							object.internal.xtarget = xtarget;
-							object.internal.ytarget = Math.max(ytarget, planet.radius);
-						}
+					let xtarget = parseFloat(args[0]);
+					let ytarget = parseFloat(args[1]);
+					if (object.internal && object.internal.canMove && !isNaN(xtarget) && !isNaN(ytarget)) {
+						object.eventMove(xtarget, ytarget, planet);
 					}
 				break;
 				case 'queue':
@@ -79,7 +76,7 @@ class World {
 				break;
 				case 'load': case 'unload':
 					if (args[0] === 'c') {
-						object.loading = undefined;
+						object.eventLoad('cancel');
 					}
 					else {
 						let unloading = ue.action === 'unload';
@@ -90,9 +87,8 @@ class World {
 							(unloading && object.internal.resource[0].canUnload && otherObject.internal.resource[0].canLoad)
 						)) {
 							// TODO: add range check
-							otherObject.loading = undefined;
-							object.loading = unloading ? 2 : 1;
-							object.loadingTarget = args[0];
+							otherObject.eventLoad('cancel');
+							object.eventLoad(ue.action, args[0]);
 						}
 					}
 				break;
@@ -223,8 +219,7 @@ class World {
 			const ydif = objectCoords[1]-otherCoords[1];
 			const distance = Math.sqrt(xdif*xdif + ydif*ydif);
 			if (distance > 50) {
-				object.loading = undefined;
-				object.loadingTarget = undefined;
+				object.eventLoad('range', this.objects);
 				delete manual[objectId];
 				continue;
 			}
