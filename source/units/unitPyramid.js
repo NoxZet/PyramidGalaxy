@@ -18,14 +18,14 @@ class UnitPyramid {
 			canLoad: true,
 			canUnload: true,
 			get capacity() {
-				return self.methaneCapacity;
+				return self.gasCapacity;
 			},
 		}];
 	}
 	get metalCapacity() {
 		return this.unit.size * 200;
 	}
-	get methaneCapacity() {
+	get gasCapacity() {
 		return this.unit.size * 200;
 	}
 	eventLoad(action, arg) {

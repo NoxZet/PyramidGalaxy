@@ -8,7 +8,6 @@ class GUI {
 		this.userId = userId;
 		this.units = [];
 		this.selected = undefined;
-		this.selectedUI = [];
 		this.loading = undefined;
 		
 		this.viewDir = undefined;
@@ -16,6 +15,8 @@ class GUI {
 		this.vy = -400;
 		
 		this.cursor = undefined;
+		
+		this.guiHUD = new GUIHUD(this, userId);
 		
 		const self = this;
 		proxy.addEventCallback((event) => {
@@ -32,6 +33,7 @@ class GUI {
 				}
 				else {
 					this.units[event.unit] = guiFactory(...split);
+					this.units[event.unit].id = parseInt(event.unit);
 				}
 			break;
 			case 'move':
@@ -43,7 +45,7 @@ class GUI {
 			break;
 			case 'ui':
 				if (this.selected === parseInt(event.unit)) {
-					this.selectedUI = split;
+					this.guiHUD.selected(this.units[this.selected], split);
 				}
 			break;
 		}
@@ -60,6 +62,7 @@ class GUI {
 			break;
 			case 'select':
 				if (this.loading[1] !== unit) {
+					console.log(this.loading[1]);
 					this.proxy.sendUserEvent(new EventServer(this.loading[1], this.loading[0], unit));
 					this.loading = undefined;
 				}
@@ -69,66 +72,12 @@ class GUI {
 			break;
 		}
 	}
-	
-	drawUI(frame) {
-		const self = this;
-		if (this.selected && this.selectedUI.length > 0) {
-			const unit = this.units[this.selected];
-			let ui = '';
-			switch (unit.type) {
-				case 0:
-					ui += Math.round(this.selectedUI[0]) + '/' + Math.round(this.selectedUI[1]) + ' metal<br>';
-					ui += Math.round(this.selectedUI[2]) + '/' + Math.round(this.selectedUI[3]) + ' methane<br>';
-					ui += (this.selectedUI[4] > 0
-						? `<a href='#' id='uireset'>Cancel loading</a>`
-						: `<a href='#' id='uiload'>Load from</a> | <a href='#' id='uiunload'>Unload into</a>`
-					);
-					document.getElementById('hudBottom').innerHTML = ui;
-					if (this.selectedUI[4] > 0) {
-						document.getElementById('uireset').addEventListener('mousedown', () => {
-							self.loadResource('cancel', self.selected);
-						});
-					} else {
-						document.getElementById('uiload').addEventListener('mousedown', () => {
-							self.loadResource('load', self.selected);
-						});
-						document.getElementById('uiunload').addEventListener('mousedown', () => {
-							self.loadResource('unload', self.selected);
-						});
-					}
-				break;
-				case 1:
-					ui += Math.round(this.selectedUI[0]) + '/' + Math.round(this.selectedUI[1]) + ' metal';
-					document.getElementById('hudBottom').innerHTML = ui;
-				break;
-				case 2:
-					ui += Math.round(this.selectedUI[0]) + '/' + Math.round(this.selectedUI[1]) + ' methane';
-					document.getElementById('hudBottom').innerHTML = ui;
-				break;
-				case 3:
-					ui += Math.round(this.selectedUI[0]) + '/' + Math.round(this.selectedUI[1]) + ' metal<br>';
-					const queue = parseInt(this.selectedUI[2]);
-					ui += (queue === -1 ? 'infinite' : queue) + ' queued<br>';
-					ui += `<a href='#' id='uireset'>reset</a> | <a href='#' id='uiinfinite'>infinite</a> | <a href='#' id='uiremove'>remove 1</a> | <a href='#' id='uiadd'>add 1</a><br>`;
-					ui += Math.round(parseFloat(this.selectedUI[3])) + '%';
-					document.getElementById('hudBottom').innerHTML = ui;
-					document.getElementById('uireset').addEventListener('mousedown', () => {
-						self.proxy.sendUserEvent(new EventServer(self.selected, 'queue', 0));
-					});
-					document.getElementById('uiinfinite').addEventListener('mousedown', () => {
-						self.proxy.sendUserEvent(new EventServer(self.selected, 'queue', -1));
-					});
-					document.getElementById('uiremove').addEventListener('mousedown', () => {
-						self.proxy.sendUserEvent(new EventServer(self.selected, 'queue', queue - 1));
-					});
-					document.getElementById('uiadd').addEventListener('mousedown', () => {
-						self.proxy.sendUserEvent(new EventServer(self.selected, 'queue', queue + 1));
-					});
-				break;
-			}
-		}
+	unitMove(unitId, x, y) {
+		this.proxy.sendUserEvent(new EventServer(unitId, 'move', x + ';' + y));
 	}
-	
+	unitQueue(unitId, queue) {
+		this.proxy.sendUserEvent(new EventServer(unitId, 'queue', queue));
+	}
 	draw(ctx, frame) {
 		if (this.viewDir) {
 			const viewSpeed = 5;
@@ -139,9 +88,13 @@ class GUI {
 				case 'ArrowDown': this.vy += viewSpeed; break;
 			}
 		}
+		
 		const width = ctx.canvas.width;
 		const height = ctx.canvas.height;
+		this.guiHUD.width = width;
+		this.guiHUD.height = height;
 		ctx.clearRect(0, 0, width, height);
+		
 		for (let unitId in this.units) {
 			const unit = this.units[unitId]
 			unit.draw(ctx, frame, this.units, this.vx, this.vy);
@@ -154,15 +107,14 @@ class GUI {
 				ctx.stroke();
 			}
 		}
+		this.guiHUD.draw(ctx, frame, width, height);
 		if (this.cursor && this.loading) {
 			ctx.beginPath();
 			ctx.arc(this.cursor[0], this.cursor[1], 10, 0, 2 * Math.PI);
 			ctx.strokeStyle = 'blue';
 			ctx.stroke();
 		}
-		this.drawUI(frame);
 	}
-	
 	unitAt(x, y) {
 		const unitIds = Object.keys(this.units).reverse();
 		for (let unitId of unitIds) {
@@ -176,8 +128,10 @@ class GUI {
 			}
 		}
 	}
-	
 	mouseClick(button, type, x, y) {
+		if (this.guiHUD.mouseClick(button, type, x, y)) {
+			return;
+		}
 		if (type !== 'down') {
 			return;
 		}
@@ -188,6 +142,7 @@ class GUI {
 			if (unitId === undefined) {
 				this.loading = undefined;
 				this.selected = undefined;
+				this.guiHUD.selected(undefined);
 				this.proxy.sendUserEvent(new EventServer('', 'select'));
 			}
 			else {
@@ -196,7 +151,7 @@ class GUI {
 				}
 				else {
 					this.selected = unitId;
-					this.selectedUI = [];
+					this.guiHUD.selected(undefined);
 					this.proxy.sendUserEvent(new EventServer(this.selected, 'select'));
 				}
 			}
@@ -230,17 +185,21 @@ class GUI {
 					tx = (tx + Math.PI * 2) % (Math.PI * 2);
 					ty = dist;
 				}
-				this.proxy.sendUserEvent(new EventServer(this.selected, 'move', tx + ';' + ty));
+				this.unitMove(this.selected, tx, ty);
 			}
 		}
 	}
 	
 	mouseMove(x, y) {
 		this.cursor = (x === undefined) ? undefined : [x, y];
+		this.guiHUD.cursor = (x === undefined) ? undefined : [x, y];
 	}
 	
 	key(button, type) {
-		if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(button)) {
+		if (button.length === 4 && button.search('Key') === 0) {
+			this.guiHUD.key(button.substr(3, 1), type);
+		}
+		else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(button)) {
 			if (type === 'down') {
 				this.viewDir = button;
 			} else {

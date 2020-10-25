@@ -27,7 +27,7 @@ if (typeof module === 'object' && typeof module.exports === 'object') {
 /**
  * 0 - Pyramid
  * 1 - Metal mine
- * 2 - Methane mine
+ * 2 - Gas mine
  * 3 - Pyramid factory
  * 4 - Orbital factory
  * 5 - Research lab
