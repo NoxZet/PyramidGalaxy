@@ -21,5 +21,5 @@ function guiModify(object) {
 			return;
 		}
 	}
-	object.modify(unitArgs);
+	object.modify(...unitArgs);
 }

@@ -92,6 +92,12 @@ class World {
 						}
 					}
 				break;
+				case 'merge':
+					let otherObject = this.objects[args[0]];
+					if (otherObject && otherObject.owner === user && otherObject !== object) {
+						object.eventMerge(otherObject);
+					}
+				break;
 			}
 		}
 		else {
@@ -274,7 +280,7 @@ class World {
 			if (object.isPlanet) {
 				continue;
 			}
-			const objEvents = object.tick(frame);
+			const objEvents = object.tick(frame, this.objects);
 			if (typeof objEvents === 'object') {
 				if (typeof objEvents[0] === 'string') {
 					this.handleObjEvent(object, objEvents);
@@ -297,6 +303,15 @@ class World {
 			break;
 			case 'move':
 				this.notifyAllEvent(new EventServer(object.id, 'move', `${objEvent[1]};${objEvent[2]}`));
+			break;
+			case 'merge':
+				delete this.objects[object.id];
+				this.notifyAllEvent(new EventServer(object.id, 'remove'));
+				let other = this.objects[objEvent[1]];
+				if (other) {
+					console.log(other);
+					this.notifyAllEvent(new EventServer(other.id, 'exists', other.eventExists));
+				}
 			break;
 		}
 	}
