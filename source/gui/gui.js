@@ -9,6 +9,7 @@ class GUI {
 		this.units = [];
 		this.selected = undefined;
 		this.loading = undefined;
+		this.merging = undefined;
 		
 		this.viewDir = undefined;
 		this.vx = -400+userId*600;
@@ -43,6 +44,19 @@ class GUI {
 					unit.y = parseFloat(split[1]);
 				}
 			break;
+			case 'remove':
+				if (this.units[event.unit]) {
+					delete this.units[event.unit];
+					if (this.loading && this.loading[1] === event.unit) {
+						this.loading = undefined;
+					}
+					if (this.merging === event.unit) {
+						this.merging = undefined;
+					}
+					if (this.selected === event.unit) {
+						this.selected = undefined;
+					}
+				}
 			case 'ui':
 				if (this.selected === parseInt(event.unit)) {
 					this.guiHUD.selected(this.units[this.selected], split);
@@ -62,13 +76,23 @@ class GUI {
 			break;
 			case 'select':
 				if (this.loading[1] !== unit) {
-					console.log(this.loading[1]);
 					this.proxy.sendUserEvent(new EventServer(this.loading[1], this.loading[0], unit));
-					this.loading = undefined;
 				}
-				else {
-					this.loading = undefined;
+				this.loading = undefined;
+			break;
+		}
+	}
+	unitMerge(dir='cancel', unit) {
+		switch (dir) {
+			case 'init':
+				this.merging = unit;
+			break;
+			case 'select':
+				if (this.merging !== unit) {
+					this.proxy.sendUserEvent(new EventServer(this.merging, 'merge', unit));
+					this.merging = undefined;
 				}
+				this.merging = undefined;
 			break;
 		}
 	}
@@ -108,7 +132,7 @@ class GUI {
 			}
 		}
 		this.guiHUD.draw(ctx, frame, width, height);
-		if (this.cursor && this.loading) {
+		if (this.cursor && (this.loading || this.merging)) {
 			ctx.beginPath();
 			ctx.arc(this.cursor[0], this.cursor[1], 10, 0, 2 * Math.PI);
 			ctx.strokeStyle = 'blue';
@@ -141,6 +165,7 @@ class GUI {
 			let unitId = this.unitAt(x, y);
 			if (unitId === undefined) {
 				this.loading = undefined;
+				this.merging = undefined;
 				this.selected = undefined;
 				this.guiHUD.selected(undefined);
 				this.proxy.sendUserEvent(new EventServer('', 'select'));
@@ -148,6 +173,9 @@ class GUI {
 			else {
 				if (this.loading) {
 					this.loadResource('select', unitId);
+				}
+				else if (this.merging) {
+					this.unitMerge('select', unitId)
 				}
 				else {
 					this.selected = unitId;

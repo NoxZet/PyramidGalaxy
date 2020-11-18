@@ -4,6 +4,7 @@ class UnitPyramid {
 		this.canMove = true;
 		this.xtarget = undefined;
 		this.ytarget = undefined;
+		this.merging = false;
 		this.loadAutomove = false;
 		const self = this;
 		this.resource = [{
@@ -31,6 +32,7 @@ class UnitPyramid {
 	eventLoad(action, arg) {
 		switch (action) {
 			case 'load': case 'unload':
+				this.merging = false;
 				this.loadAutomove = true;
 				return false;
 			case 'cancel':
@@ -38,26 +40,60 @@ class UnitPyramid {
 			case 'range':
 				let other;
 				if (this.loadAutomove && (other = arg[this.unit.loadingTarget]) && this.unit.planet === other.planet) {
-					this.loadxtarget = other.x;
-					this.loadytarget = other.y;
+					this.automovextarget = other.x;
+					this.automoveytarget = other.y;
 					return true;
 				} else {
 					return false;
 				}
 		}
 	}
-	eventMove(x, y, planet, automove = false) {
+	eventMerge(target) {
+		this.merging = target;
+		this.loadAutomove = false;
+		this.automovextarget = undefined;
+		this.automoveytarget = undefined;
+	}
+	eventMove(x, y, planet) {
 		if (this.grounded) {
 			this.xtarget = x;
 		}
-		this.loadAutomove = automove;
-		this.loadxtarget = undefined;
-		this.loadytarget = undefined;
+		this.merging = false;
+		this.loadAutomove = false;
+		this.automovextarget = undefined;
+		this.automoveytarget = undefined;
 	}
-	tick(frame) {
-		let loadMove
-		let xtarget = this.xtarget || this.loadxtarget;
-		let ytarget = this.ytarget || this.loadytarget;
+	tick(frame, unitArray) {
+		if (this.merging) {
+			const objectCoords = this.unit.getCoords(unitArray);
+			const otherCoords = this.merging.getCoords(unitArray);
+			const xdif = objectCoords[0]-otherCoords[0];
+			const ydif = objectCoords[1]-otherCoords[1];
+			const distance = Math.sqrt(xdif*xdif + ydif*ydif);
+			// Merge into merge target
+			if (distance <= 20) {
+				this.merging.size += this.unit.size;
+				// Load resources into target
+				let targetResources = this.merging.internal.resource;
+				for (let resId in targetResources) {
+					if (this.resource[resId]) {
+						targetResources[resId].amount = Math.min(
+							targetResources[resId].amount + this.resource[resId].amount,
+							targetResources[resId].capacity
+						);
+					}
+				}
+				// Merge object event removes this unit and updates the other unit
+				return ['merge', this.merging.id];
+			}
+			// Order to move closer if too far for merging
+			else {
+				this.automovextarget = this.merging.x;
+				this.automoveytarget = this.merging.y;
+			}
+		}
+		let xtarget = this.xtarget || this.automovextarget;
+		let ytarget = this.ytarget || this.automoveytarget;
 		if (this.unit.angular) {
 			let x = this.unit.x;
 			let y = this.unit.y;
@@ -67,14 +103,15 @@ class UnitPyramid {
 			if (xtarget !== undefined || ytarget !== undefined) {
 				// TODO: we don't do movement on y yet
 				this.ytarget = undefined;
-				this.loadytarget = undefined;
+				this.automoveytarget = undefined;
+				// Choose which way around the planet is faster
 				let leftDist = (x + Math.PI * 4 - xtarget) % (Math.PI * 2);
 				let rightDist = (xtarget + Math.PI * 4 - x) % (Math.PI * 2);
 				if (leftDist < rightDist) {
 					if (leftDist <= xspeed) {
 						this.unit.x = xtarget;
 						this.xtarget = undefined;
-						this.loadxtarget = undefined;
+						this.automovextarget = undefined;
 					}
 					else {
 						this.unit.x -= xspeed;
@@ -87,7 +124,7 @@ class UnitPyramid {
 					if (rightDist <= xspeed) {
 						this.unit.x = this.xtarget;
 						this.xtarget = undefined;
-						this.loadxtarget = undefined;
+						this.automovextarget = undefined;
 					}
 					else {
 						this.unit.x += xspeed;
@@ -96,9 +133,9 @@ class UnitPyramid {
 						}
 					}
 				}
-				if (this.unit.y * 0.5 * (Math.abs(this.unit.x - this.loadxtarget) % Math.PI * 2) < 45) {
-					this.loadxtarget = undefined;
-					this.loadytarget = undefined;
+				if (this.loadAutomove && this.unit.y * 0.5 * (Math.abs(this.unit.x - this.automovextarget) % Math.PI * 2) < 45) {
+					this.automovextarget = undefined;
+					this.automoveytarget = undefined;
 				}
 				return ['move', this.unit.x, this.unit.y]; // x, y
 			}

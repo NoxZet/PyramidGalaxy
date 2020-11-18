@@ -28,9 +28,9 @@ class Unit {
 		}
 		return [x, y, angle];
 	}
-	tick(frame) {
+	tick(frame, unitArray) {
 		if (this._internal && this._internal.tick) {
-			return this._internal.tick(frame);
+			return this._internal.tick(frame, unitArray);
 		}
 	}
 	set internal(v) {
@@ -75,6 +75,9 @@ class Unit {
 				break;
 			}
 		}
+	}
+	eventMerge(target) {
+		return this.internal.eventMerge ? this.internal.eventMerge(target) : undefined;
 	}
 	get isPlanet() {
 		return false;

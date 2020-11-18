@@ -66,6 +66,10 @@ class GUIHUD {
 							gui.loadResource('unload', self.selectedUnit.id);
 						};
 					}
+					this.grid['S'][3] = 'Merge';
+					this.grid['S'][4] = () => {
+						gui.unitMerge('init', self.selectedUnit.id);
+					};
 				break;
 				case 1:
 					this.unitName = 'Metal mine';
@@ -153,7 +157,7 @@ class GUIHUD {
 		}
 	}
 	mouseClick(button, type, mx, my) {
-		if (type !== 'down' || (mx < this.width - HUD_GRID_WIDTH && my < this.width - HUD_GRID_HEIGHT)) {
+		if (type !== 'down' || (mx < this.width - HUD_GRID_WIDTH || my < this.width - HUD_GRID_HEIGHT)) {
 			return false;
 		}
 		for (let key in this.grid) {
