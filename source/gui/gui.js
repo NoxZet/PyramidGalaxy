@@ -119,17 +119,19 @@ class GUI {
 		this.guiHUD.height = height;
 		ctx.clearRect(0, 0, width, height);
 		
+		let circle;
 		for (let unitId in this.units) {
-			const unit = this.units[unitId]
-			unit.draw(ctx, frame, this.units, this.vx, this.vy);
+			const unit = this.units[unitId];
+			const bounds = unit.draw(ctx, frame, this.units, this.vx, this.vy);
 			if (this.selected === parseInt(unitId)) {
-				let x, y;
-				[x, y] = unit.getDrawCoords(this.units);
-				ctx.beginPath();
-				ctx.arc(x - this.vx, y - this.vy, 15, 0, 2 * Math.PI);
-				ctx.strokeStyle = 'red';
-				ctx.stroke();
+				circle = bounds;
 			}
+		}
+		if (circle) {
+			ctx.beginPath();
+			ctx.arc(circle[0][0], circle[0][1], circle[1], 0, 2 * Math.PI);
+			ctx.strokeStyle = 'red';
+			ctx.stroke();
 		}
 		this.guiHUD.draw(ctx, frame, width, height);
 		if (this.cursor && (this.loading || this.merging)) {
@@ -146,8 +148,7 @@ class GUI {
 			if (unit.isPlanet || unit.owner !== this.userId) {
 				continue;
 			}
-			const coords = unit.getDrawCoords(this.units);
-			if (Math.sqrt((x-coords[0])*(x-coords[0]) + (y-coords[1])*(y-coords[1])) <= 15) {
+			if (unit.mouseInBounds(x, y, this.units)) {
 				return parseInt(unitId);
 			}
 		}

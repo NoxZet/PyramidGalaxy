@@ -15,34 +15,51 @@ class GUIUnit extends GUIObject {
 		this.type = parseInt(type);
 		this.size = parseInt(size);
 	}
-	draw(ctx, frame, unitArray, vx, vy) {
+	getBounds(unitArray, vx, vy) {
 		let x, y, angle;
 		[x, y, angle] = this.getDrawCoords(unitArray);
 		
-		//x = 0; y = 5;
+		const scale = (this.type === 0 ? 10 : 15) * Math.sqrt(this.size);
 		
+		return [
+			[
+				x - vx + Math.cos(angle) * scale,
+				y - vy + Math.sin(angle) * scale
+			],
+			[
+				x - vx - Math.cos(angle) * scale,
+				y - vy - Math.sin(angle) * scale
+			],
+			[
+				x - vx + Math.sin(angle) * scale * 1.73,
+				y - vy - Math.cos(angle) * scale * 1.73
+			],
+			[
+				x - vx + Math.sin(angle) * scale * 0.577,
+				y - vy - Math.cos(angle) * scale * 0.577
+			],
+			scale * 0.82
+		];
+	}
+	pointIsRight(a, b, m) {
+		return (b[0] - a[0]) * (m[1] - a[1]) - (b[1] - a[1]) * (m[0] - a[0]) >= 0;
+	}
+	mouseInBounds(mx, my, unitArray) {
+		let bounds = this.getBounds(unitArray, 0, 0);
+		return (
+			this.pointIsRight(bounds[0], bounds[1], [mx, my])
+			&& this.pointIsRight(bounds[1], bounds[2], [mx, my])
+			&& this.pointIsRight(bounds[2], bounds[0], [mx, my])
+		);
+	}
+	draw(ctx, frame, unitArray, vx, vy, selected) {
 		ctx.beginPath();
 		
-		const scale = this.type === 0 ? 10 : 15;
-		
-		let x0 = x - vx + Math.cos(angle) * scale * Math.sqrt(this.size);
-		let y0 = y - vy + Math.sin(angle) * scale * Math.sqrt(this.size);
-		ctx.moveTo(
-			x0,
-			y0
-		);
-		ctx.lineTo(
-			x - vx - Math.cos(angle) * scale * Math.sqrt(this.size),
-			y - vy - Math.sin(angle) * scale * Math.sqrt(this.size)
-		);
-		ctx.lineTo(
-			x - vx + Math.sin(angle) * scale * 1.73 * Math.sqrt(this.size),
-			y - vy - Math.cos(angle) * scale * 1.73 * Math.sqrt(this.size)
-		);
-		ctx.lineTo(
-			x0,
-			y0
-		);
+		const bounds = this.getBounds(unitArray, vx, vy);
+		ctx.moveTo(...bounds[0]);
+		ctx.lineTo(...bounds[1]);
+		ctx.lineTo(...bounds[2]);
+		ctx.lineTo(...bounds[0]);
 		
 		let strokeColor = ['blue', 'red', 'green', 'yellow', 'orange', 'purple', 'cyan'][this.owner];
 		ctx.strokeStyle = strokeColor ? strokeColor : 'black';
@@ -51,6 +68,8 @@ class GUIUnit extends GUIObject {
 		let fillColor = ['#eee', '#b38847', '#69b38f', '#999'][this.type];
 		ctx.fillStyle = fillColor ? fillColor : 'white';
 		ctx.fill();
+		
+		return [bounds[3], bounds[4]];
 	}
 	get isPlanet() {
 		return false;
