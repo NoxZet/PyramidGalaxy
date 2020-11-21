@@ -2,8 +2,11 @@ if (typeof module === 'object' && typeof module.exports === 'object') {
 	Unit = require('./unit.js');
 	UnitPyramid = require('./unitPyramid.js');
 	UnitMetalMine = require('./unitMetalMine.js');
+	UnitGasMine = require('./unitGasMine.js');
 	UnitPyraFactory = require('./unitPyraFactory.js');
 }
+
+INTERNAL_CLASSES = [UnitPyramid, UnitMetalMine, UnitGasMine, UnitPyraFactory];
 
 function unitFactory() {
 	const unitArgs = Array.from(arguments);
@@ -13,7 +16,7 @@ function unitFactory() {
 		unitArgs[7] = 1;
 	}
 	const unit = new Unit(...unitArgs);
-	const internalClass = [UnitPyramid, UnitMetalMine, undefined, UnitPyraFactory][unitArgs[2]];
+	const internalClass = INTERNAL_CLASSES[unitArgs[2]];
 	if (internalClass) {
 		unit.internal = new internalClass(extraArgs);
 	}

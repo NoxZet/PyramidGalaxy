@@ -10,7 +10,7 @@ class UnitMetalMine {
 			get capacity() {
 				return self.metalCapacity;
 			},
-		}, []];
+		}, undefined];
 	}
 	get metalCapacity() {
 		return this.unit.size * 200;
