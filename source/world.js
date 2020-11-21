@@ -202,6 +202,9 @@ class World {
 				continue;
 			}
 			let objRes = object.internal.resource[res];
+			if (!objRes) {
+				continue;
+			}
 			if (objRes.canLoad && objRes.amount < objRes.capacity) {
 				loaders[objectId] = [object, Math.min(object.size, objRes.capacity-objRes.amount)];
 			}
