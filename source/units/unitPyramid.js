@@ -1,7 +1,22 @@
 const UNIT_PRICE = [
-	[-1, 100, 100, 100],
-	[-1, 0, 0, 0]
+	[0, 100, 100, 100],
+	[0, 0, 0, 0]
 ];
+
+const ITEM_INFO = {
+	'thruster': {
+		size: 3,
+		price: [100, 50],
+	},
+	'laser': {
+		size: 1,
+		price: [50, 100],
+	},
+	'hull': {
+		size: 1,
+		price: [150],
+	},
+};
 
 class UnitPyramid {
 	constructor(grounded = true) {
@@ -13,20 +28,21 @@ class UnitPyramid {
 		this.loadAutomove = false;
 		const self = this;
 		this.resource = [{
-			amount: 0,
+			amount: 100,
 			canLoad: true,
 			canUnload: true,
 			get capacity() {
 				return self.metalCapacity;
 			},
 		}, {
-			amount: 0,
+			amount: 100,
 			canLoad: true,
 			canUnload: true,
 			get capacity() {
 				return self.gasCapacity;
 			},
 		}];
+		this.inventory = [];
 	}
 	get metalCapacity() {
 		return this.unit.size * 200;
@@ -65,7 +81,7 @@ class UnitPyramid {
 		let newAmount = [];
 		for (let resId in UNIT_PRICE) {
 			if (UNIT_PRICE[resId][type] > 0 && this.resource[resId]) {
-				newAmount[resId] = this.resource[resId].amount - UNIT_PRICE[resId][type];
+				newAmount[resId] = this.resource[resId].amount - UNIT_PRICE[resId][type] * this.unit.size;
 				if (!(newAmount[resId] >= 0)) {
 					canBuild = false;
 				}
@@ -99,6 +115,8 @@ class UnitPyramid {
 	}
 	tick(frame, unitArray) {
 		if (this.merging) {
+			this.automovextarget = undefined;
+			this.automoveytarget = undefined;
 			const objectCoords = this.unit.getCoords(unitArray);
 			const otherCoords = this.merging.getCoords(unitArray);
 			const xdif = objectCoords[0]-otherCoords[0];
@@ -112,11 +130,11 @@ class UnitPyramid {
 				let canBuild = true;
 				let newAmount = [];
 				for (let resId in UNIT_PRICE) {
-					if (UNIT_PRICE[resId][type] > 0 && this.resource[resId] && targetResources[resId]) {
-						newAmount[resId] = Math.min(
-							targetResources[resId].amount + this.resource[resId].amount - UNIT_PRICE[resId][type],
-							targetResources[resId].capacity
-						);
+					let thisAmount = this.resource[resId] ? this.resource[resId].amount : 0;
+					let targetAmount = targetResources[resId] ? targetResources[resId].amount : 0;
+					newAmount[resId] = thisAmount + targetAmount - UNIT_PRICE[resId][type];
+					// if morph costs something, and both have this resource
+					if (UNIT_PRICE[resId][type] > 0) {
 						if (!(newAmount[resId] >= 0)) {
 							canBuild = false;
 						}
@@ -128,8 +146,8 @@ class UnitPyramid {
 				if (canBuild) {
 					this.merging.size += this.unit.size;
 					for (let resId in UNIT_PRICE) {
-						if (this.resource[resId]) {
-							targetResources[resId].amount = newAmount[resId];
+						if (targetResources[resId]) {
+							targetResources[resId].amount = Math.min(newAmount[resId], targetResources[resId].capacity);
 						}
 					}
 					// Merge object event removes this unit and updates the other unit
@@ -191,8 +209,47 @@ class UnitPyramid {
 			}
 		}
 	}
+	// Inventory stuff
+	get inventoryTaken() {
+		let taken = 0;
+		for (let item of this.inventory) {
+			taken += ITEM_INFO[item];
+		}
+		return taken;
+	}
+	eventItem(action, arg) {
+		switch (action) {
+			case 'remove':
+				let pos = this.inventory.indexOf(arg);
+				if (pos !== -1) {
+					this.inventory.splice(pos, 1);
+				}
+			break;
+			case 'make':
+				let taken = this.inventoryTaken;
+				if (ITEM_INFO.hasOwnProperty(arg) && taken + ITEM_INFO[arg].size <= this.unit.size) {
+					let canBuild = true;
+					for (let res in ITEM_INFO[arg].price) {
+						if (!this.resource[res] || this.resource[res].amount < ITEM_INFO[arg].price[res]) {
+							canBuild = false;
+							break;
+						}
+					}
+					if (canBuild) {
+						for (let res in ITEM_INFO[arg].price) {
+							this.resource[res].amount -= ITEM_INFO[arg].price[res];
+						}
+						this.inventory.push(arg);
+					}
+				}
+			break;
+		}
+	}
 	get eventUI() {
-		return `${this.resource[0].amount};${this.resource[0].capacity};${this.resource[1].amount};${this.resource[1].capacity};${this.unit.loading > 0 ? 1 : 0}`;
+		return (
+			`${this.resource[0].amount};${this.resource[0].capacity};${this.resource[1].amount};${this.resource[1].capacity};${this.unit.loading > 0 ? 1 : 0}`
+			+ `;${this.inventoryTaken};${this.inventory.join('-')}`
+		);
 	}
 }
 

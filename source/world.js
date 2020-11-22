@@ -56,6 +56,7 @@ class World {
 			}
 			let planet = this.objects[object.orbits];
 			let args = ue.meta.toString().split(';');
+			let result;
 			switch (ue.action) {
 				case 'move':
 					let xtarget = parseFloat(args[0]);
@@ -99,10 +100,13 @@ class World {
 					}
 				break;
 				case 'morph':
-					let result = object.eventMorph(args[0]);
+					result = object.eventMorph(args[0]);
 					if (result) {
 						this.handleObjEvent(object, result);
 					}
+				break;
+				case 'item':
+					object.eventItem(...args);
 				break;
 			}
 		}

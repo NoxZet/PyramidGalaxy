@@ -82,6 +82,9 @@ class Unit {
 	eventMorph(target) {
 		return this.internal.eventMorph ? this.internal.eventMorph(target) : undefined;
 	}
+	eventItem(action, arg) {
+		return this.internal.eventItem ? this.internal.eventItem(action, arg) : undefined;
+	}
 	get isPlanet() {
 		return false;
 	}
