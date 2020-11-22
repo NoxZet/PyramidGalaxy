@@ -22,7 +22,7 @@ class GUIHUD {
 			D: [2, 1],
 			F: [3, 1],
 			G: [4, 1],
-			Y: [0, 2],
+			Z: [0, 2],
 			X: [1, 2],
 			C: [2, 2],
 			V: [3, 2],
@@ -32,10 +32,21 @@ class GUIHUD {
 		this.unitText = '';
 		this.selectedUnit = undefined;
 		this.selectedData = undefined;
+		this.selectedState = undefined;
 	}
-	selected(unit, data = undefined, state = 0) {
+	selected(unit, data = undefined, state = undefined) {
+		if (state !== undefined) {
+			this.selectedState = state;
+		}
+		else if (unit !== this.selectedUnit) {
+			this.selectedState = state = 0;
+		}
+		else {
+			state = this.selectedState;
+		}
 		this.selectedUnit = unit;
 		this.selectedData = data;
+		
 		this.unitText = '';
 		for (let key in this.grid) {
 			delete this.grid[key][3];
@@ -50,26 +61,50 @@ class GUIHUD {
 					this.unitName = 'Pyramid'
 					this.unitText += Math.round(data[0]) + '/' + Math.round(data[1]) + ' metal\n';
 					this.unitText += Math.round(data[2]) + '/' + Math.round(data[3]) + ' gas';
-					if (data[4] > 0) {
-						this.grid['W'][3] = 'Cancel\nLoading';
-						this.grid['W'][4] = () => {
-							gui.loadResource('cancel', self.selectedUnit.id);
+					if (state === 0) {
+						if (data[4] > 0) {
+							this.grid['W'][3] = 'Cancel\nLoading';
+							this.grid['W'][4] = () => {
+								gui.loadResource('cancel', self.selectedUnit.id);
+							};
+						} else {
+							this.grid['W'][3] = 'Load\nfrom';
+							this.grid['W'][4] = () => {
+								console.log(self.selectedUnit);
+								gui.loadResource('load', self.selectedUnit.id);
+							};
+							this.grid['E'][3] = 'Unload\ninto';
+							this.grid['E'][4] = () => {
+								gui.loadResource('unload', self.selectedUnit.id);
+							};
+						}
+						this.grid['S'][3] = 'Merge';
+						this.grid['S'][4] = () => {
+							gui.unitMerge('init', self.selectedUnit.id);
 						};
-					} else {
-						this.grid['W'][3] = 'Load\nfrom';
-						this.grid['W'][4] = () => {
-							console.log(self.selectedUnit);
-							gui.loadResource('load', self.selectedUnit.id);
-						};
-						this.grid['E'][3] = 'Unload\ninto';
-						this.grid['E'][4] = () => {
-							gui.loadResource('unload', self.selectedUnit.id);
+						this.grid['Z'][3] = 'Morph';
+						this.grid['Z'][4] = () => {
+							this.selected(unit, data, 1);
 						};
 					}
-					this.grid['S'][3] = 'Merge';
-					this.grid['S'][4] = () => {
-						gui.unitMerge('init', self.selectedUnit.id);
-					};
+					else if (state === 1) {
+						this.grid['Q'][3] = 'Metal\nmine';
+						this.grid['Q'][4] = () => {
+							gui.unitMorph(self.selectedUnit.id, 1);
+						};
+						this.grid['W'][3] = 'Gas\nmine';
+						this.grid['W'][4] = () => {
+							gui.unitMorph(self.selectedUnit.id, 2);
+						};
+						this.grid['A'][3] = 'Pyra\nfactory';
+						this.grid['A'][4] = () => {
+							gui.unitMorph(self.selectedUnit.id, 3);
+						};
+						this.grid['B'][3] = 'Back';
+						this.grid['B'][4] = () => {
+							this.selected(unit, data, 0);
+						};
+					}
 				break;
 				case 1:
 					this.unitName = 'Metal mine';
@@ -157,7 +192,7 @@ class GUIHUD {
 		}
 	}
 	mouseClick(button, type, mx, my) {
-		if (type !== 'down' || (mx < this.width - HUD_GRID_WIDTH || my < this.width - HUD_GRID_HEIGHT)) {
+		if (type !== 'down' || (mx < this.width - HUD_GRID_WIDTH || my < this.height - HUD_GRID_HEIGHT)) {
 			return false;
 		}
 		for (let key in this.grid) {

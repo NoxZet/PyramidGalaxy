@@ -79,6 +79,9 @@ class Unit {
 	eventMerge(target) {
 		return this.internal.eventMerge ? this.internal.eventMerge(target) : undefined;
 	}
+	eventMorph(target) {
+		return this.internal.eventMorph ? this.internal.eventMorph(target) : undefined;
+	}
 	get isPlanet() {
 		return false;
 	}

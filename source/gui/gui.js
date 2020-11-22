@@ -96,6 +96,9 @@ class GUI {
 			break;
 		}
 	}
+	unitMorph(unitId, target) {
+		this.proxy.sendUserEvent(new EventServer(unitId, 'morph', target));
+	}
 	unitMove(unitId, x, y) {
 		this.proxy.sendUserEvent(new EventServer(unitId, 'move', x + ';' + y));
 	}

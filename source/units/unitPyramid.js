@@ -1,3 +1,8 @@
+const UNIT_PRICE = [
+	[-1, 100, 100, 100],
+	[-1, 0, 0, 0]
+];
+
 class UnitPyramid {
 	constructor(grounded = true) {
 		this.grounded = grounded;
@@ -54,6 +59,35 @@ class UnitPyramid {
 		this.automovextarget = undefined;
 		this.automoveytarget = undefined;
 	}
+	eventMorph(type) {
+		// Check resources needed
+		let canBuild = true;
+		let newAmount = [];
+		for (let resId in UNIT_PRICE) {
+			if (UNIT_PRICE[resId][type] > 0 && this.resource[resId]) {
+				newAmount[resId] = this.resource[resId].amount - UNIT_PRICE[resId][type];
+				if (!(newAmount[resId] >= 0)) {
+					canBuild = false;
+				}
+			}
+			else if (UNIT_PRICE[resId][type] !== 0) {
+				canBuild = false;
+			}
+		}
+		// Modify resources
+		if (canBuild) {
+			for (let resId in UNIT_PRICE) {
+				if (this.resource[resId]) {
+					this.amount = newAmount[resId];
+				}
+			}
+			// Merge object event removes this unit and updates the other unit
+			return ['morph', type];
+		}
+		else {
+			return ['notice', `Not enough resources`]
+		}
+	}
 	eventMove(x, y, planet) {
 		if (this.grounded) {
 			this.xtarget = x;
@@ -70,21 +104,37 @@ class UnitPyramid {
 			const xdif = objectCoords[0]-otherCoords[0];
 			const ydif = objectCoords[1]-otherCoords[1];
 			const distance = Math.sqrt(xdif*xdif + ydif*ydif);
-			// Merge into merge target
+			// Attempt merge into merge target
 			if (distance <= 20) {
-				this.merging.size += this.unit.size;
-				// Load resources into target
+				let type = this.merging.type
+				// Check resources into target
 				let targetResources = this.merging.internal.resource;
-				for (let resId in targetResources) {
-					if (this.resource[resId]) {
-						targetResources[resId].amount = Math.min(
-							targetResources[resId].amount + this.resource[resId].amount,
+				let canBuild = true;
+				let newAmount = [];
+				for (let resId in UNIT_PRICE) {
+					if (UNIT_PRICE[resId][type] > 0 && this.resource[resId] && targetResources[resId]) {
+						newAmount[resId] = Math.min(
+							targetResources[resId].amount + this.resource[resId].amount - UNIT_PRICE[resId][type],
 							targetResources[resId].capacity
 						);
+						if (!(newAmount[resId] >= 0)) {
+							canBuild = false;
+						}
+					}
+					else if (UNIT_PRICE[resId][type] !== 0) {
+						canBuild = false;
 					}
 				}
-				// Merge object event removes this unit and updates the other unit
-				return ['merge', this.merging.id];
+				if (canBuild) {
+					this.merging.size += this.unit.size;
+					for (let resId in UNIT_PRICE) {
+						if (this.resource[resId]) {
+							targetResources[resId].amount = newAmount[resId];
+						}
+					}
+					// Merge object event removes this unit and updates the other unit
+					return ['merge', this.merging.id];
+				}
 			}
 			// Order to move closer if too far for merging
 			else {

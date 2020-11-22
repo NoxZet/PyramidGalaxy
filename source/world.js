@@ -98,6 +98,12 @@ class World {
 						object.eventMerge(otherObject);
 					}
 				break;
+				case 'morph':
+					let result = object.eventMorph(args[0]);
+					if (result) {
+						this.handleObjEvent(object, result);
+					}
+				break;
 			}
 		}
 		else {
@@ -166,7 +172,7 @@ class World {
 			}
 		}
 	}
-	resourceTransfer(loaders, unloaders, loaderId, unloaderId) {
+	resourceTransfer(loaders, unloaders, loaderId, unloaderId, res) {
 		let loader = loaders[loaderId][0];
 		let unloader = unloaders[unloaderId][0];
 		let loaderTransfer = loaders[loaderId][1];
@@ -186,8 +192,8 @@ class World {
 			unloaders[unloaderId][1] -= transferActual;
 		}
 		
-		loader.internal.resource[0].amount += transferActual;
-		unloader.internal.resource[0].amount -= transferActual;
+		loader.internal.resource[res].amount += transferActual;
+		unloader.internal.resource[res].amount -= transferActual;
 	}
 	resourceLoad(frame, res) {
 		if (frame % 12 !== 0) {
@@ -206,10 +212,10 @@ class World {
 				continue;
 			}
 			if (objRes.canLoad && objRes.amount < objRes.capacity) {
-				loaders[objectId] = [object, Math.min(object.size, objRes.capacity-objRes.amount)];
+				loaders[objectId] = [object, Math.min(object.size * 2, objRes.capacity-objRes.amount)];
 			}
 			if (objRes.canUnload && objRes.amount > 0) {
-				unloaders[objectId] = [object, Math.min(object.size, objRes.amount)];
+				unloaders[objectId] = [object, Math.min(object.size * 2, objRes.amount)];
 			}
 			if (object.loading > 0) {
 				manual[objectId] = object;
@@ -241,7 +247,7 @@ class World {
 			let loader = loaders[loaderId];
 			let unloader = unloaders[unloaderId];
 			if (loader && loader[1] > 0 && unloader && unloader[1] > 0) {
-				this.resourceTransfer(loaders, unloaders, loaderId, unloaderId);
+				this.resourceTransfer(loaders, unloaders, loaderId, unloaderId, res);
 			} else {
 				delete manual[objectId];
 			}
@@ -256,8 +262,13 @@ class World {
 		}
 		// Only dealing with autoloading now, remove unloaders without autounloading
 		for (let objectId of Object.keys(unloaders)) {
-			if (!unloaders[objectId][0].internal.resource[0].autoUnload) {
+			if (!unloaders[objectId][0].internal.resource[res].autoUnload) {
 				delete unloaders[objectId];
+			}
+		}
+		for (let objectId of Object.keys(loaders)) {
+			if (!loaders[objectId][0].internal.resource[res].autoLoad) {
+				delete loaders[objectId];
 			}
 		}
 		// Go over loaders and try to load autoloaders
@@ -265,16 +276,12 @@ class World {
 			let objectId = Object.keys(loaders)[0];
 			let object = loaders[objectId][0];
 			let transfer = loaders[objectId][1];
-			if (!object.internal.resource[0].autoLoad) {
-				delete loaders[objectId];
-				continue;
-			}
 			let otherId = this.resourceFindClose(object, unloaders);
 			if (!otherId) {
 				delete loaders[objectId];
 				continue;
 			}
-			this.resourceTransfer(loaders, unloaders, objectId, otherId);
+			this.resourceTransfer(loaders, unloaders, objectId, otherId, res);
 		}
 	}
 	tick(frame) {
@@ -315,6 +322,10 @@ class World {
 					console.log(other);
 					this.notifyAllEvent(new EventServer(other.id, 'exists', other.eventExists));
 				}
+			break;
+			case 'morph':
+				this.unitFactory.morph(object, objEvent[1]);
+				this.notifyAllEvent(new EventServer(object.id, 'exists', object.eventExists));
 			break;
 		}
 	}
