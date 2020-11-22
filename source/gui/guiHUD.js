@@ -2,7 +2,7 @@ if (typeof module === 'object' && typeof module.exports === 'object') {
 	throw new TypeError(`Not available in node`);
 }
 
-const HUD_TILE_SIZE = 60;
+const HUD_TILE_SIZE = 70;
 const HUD_GRID_WIDTH = HUD_TILE_SIZE * 5 + 5;
 const HUD_GRID_HEIGHT = HUD_TILE_SIZE * 3 + 5;
 const HUD_PANEL_HEIGHT = 110;
@@ -28,8 +28,10 @@ class GUIHUD {
 			V: [3, 2],
 			B: [4, 2],
 		}
+		this.gridMap = ['Q', 'W', 'E', 'R', 'T', 'A', 'S', 'D', 'F', 'G', 'Z', 'X', 'C', 'V', 'B'];
 		this.unitName = '';
 		this.unitText = '';
+		this.unitText2 = '';
 		this.selectedUnit = undefined;
 		this.selectedData = undefined;
 		this.selectedState = undefined;
@@ -48,6 +50,7 @@ class GUIHUD {
 		this.selectedData = data;
 		
 		this.unitText = '';
+		this.unitText2 = '';
 		for (let key in this.grid) {
 			delete this.grid[key][3];
 			delete this.grid[key][4];
@@ -61,6 +64,27 @@ class GUIHUD {
 					this.unitName = 'Pyramid'
 					this.unitText += Math.round(data[0]) + '/' + Math.round(data[1]) + ' metal\n';
 					this.unitText += Math.round(data[2]) + '/' + Math.round(data[3]) + ' gas';
+					let taken = data[5];
+					
+					// Inventory display and splitting
+					// ['thruster', 'thruster', 'laser', 'laser', 'laser']
+					let inventory = data[6].split('-');
+					if (inventory[0] === '') {
+						inventory = [];
+					}
+					// {'thruster' => 3, 'laser' => 7}
+					let inventoryObj = {};
+					for (let item of inventory) {
+						inventoryObj[item] = (inventoryObj[item] ? inventoryObj[item] : 0) + 1;
+					}
+					// ['thruster', 'laser']
+					let items = Object.keys(inventoryObj);
+					this.unitText2 = 'Inventory: \n'
+					for (let item in inventoryObj) {
+						this.unitText2 += `${inventoryObj[item]}x ${item}\n`;
+					}
+					
+					// Grid
 					if (state === 0) {
 						if (data[4] > 0) {
 							this.grid['W'][3] = 'Cancel\nLoading';
@@ -86,20 +110,64 @@ class GUIHUD {
 						this.grid['Z'][4] = () => {
 							this.selected(unit, data, 1);
 						};
+						this.grid['X'][3] = 'Make\nitem';
+						this.grid['X'][4] = () => {
+							this.selected(unit, data, 2);
+						};
+						this.grid['C'][3] = 'Remove\nitem';
+						this.grid['C'][4] = () => {
+							this.selected(unit, data, 3);
+						};
 					}
 					else if (state === 1) {
-						this.grid['Q'][3] = 'Metal\nmine';
+						// Morphing
+						this.grid['Q'][3] = 'Metal\nmine\n100m';
 						this.grid['Q'][4] = () => {
 							gui.unitMorph(self.selectedUnit.id, 1);
 						};
-						this.grid['W'][3] = 'Gas\nmine';
+						this.grid['W'][3] = 'Gas\nmine\n100m';
 						this.grid['W'][4] = () => {
 							gui.unitMorph(self.selectedUnit.id, 2);
 						};
-						this.grid['A'][3] = 'Pyra\nfactory';
+						this.grid['A'][3] = 'Pyra\nfactory\n100m';
 						this.grid['A'][4] = () => {
 							gui.unitMorph(self.selectedUnit.id, 3);
 						};
+						this.grid['B'][3] = 'Back';
+						this.grid['B'][4] = () => {
+							this.selected(unit, data, 0);
+						};
+					}
+					else if (state === 2) {
+						// Make item
+						this.grid['Q'][3] = 'Thruster\n3s,100m\n50s';
+						this.grid['Q'][4] = () => {
+							gui.unitItemMake(self.selectedUnit.id, 'thruster');
+						};
+						this.grid['W'][3] = 'Laser\n1s,50m\n100g';
+						this.grid['W'][4] = () => {
+							gui.unitItemMake(self.selectedUnit.id, 'laser');
+						};
+						this.grid['E'][3] = 'Hull\n1s,150m';
+						this.grid['E'][4] = () => {
+							gui.unitItemMake(self.selectedUnit.id, 'hull');
+						};
+						this.grid['B'][3] = 'Back';
+						this.grid['B'][4] = () => {
+							this.selected(unit, data, 0);
+						};
+					}
+					else if (state === 3) {
+						// Remove item
+						let page = state - 10;
+						for (let i = 0; i < 10; i++) {
+							if (items[i]) {
+								this.grid[this.gridMap[i]][3] = items[i];
+								this.grid[this.gridMap[i]][4] = () => {
+									gui.unitItemRemove(self.selectedUnit.id, items[i]);
+								};
+							}
+						}
 						this.grid['B'][3] = 'Back';
 						this.grid['B'][4] = () => {
 							this.selected(unit, data, 0);
@@ -178,6 +246,7 @@ class GUIHUD {
 		this.drawText(ctx, this.unitName, 200, y1 + 22);
 		ctx.font = '16px Verdana';
 		this.drawText(ctx, this.unitText, 200, y1 + 40, 18);
+		this.drawText(ctx, this.unitText2, 400, y1 + 40, 18);
 	}
 	draw(ctx, frame, width, height) {
 		this.drawTeamRect(ctx, 0, 0, 1, height);

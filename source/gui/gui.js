@@ -105,6 +105,12 @@ class GUI {
 	unitQueue(unitId, queue) {
 		this.proxy.sendUserEvent(new EventServer(unitId, 'queue', queue));
 	}
+	unitItemMake(unitId, item) {
+		this.proxy.sendUserEvent(new EventServer(unitId, 'item', 'make;' + item));
+	}
+	unitItemRemove(unitId, item) {
+		this.proxy.sendUserEvent(new EventServer(unitId, 'item', 'remove;' + item));
+	}
 	draw(ctx, frame) {
 		if (this.viewDir) {
 			const viewSpeed = 5;
