@@ -23,6 +23,24 @@ function unitFactory() {
 	return unit;
 }
 
+unitFactory.morph = function(unit, type) {
+	const internalClass = INTERNAL_CLASSES[type];
+	if (internalClass) {
+		const oldInternal = unit.internal;
+		const newInternal = new internalClass();
+		unit.internal = newInternal;
+		for (let resId in newInternal.resource) {
+			if (newInternal.resource[resId] && oldInternal.resource[resId]) {
+				newInternal.resource[resId].amount = Math.min(
+					oldInternal.resource[resId].amount,
+					newInternal.resource[resId].capacity
+				)
+			}
+		}
+		unit.type = type;
+	}
+}
+
 if (typeof module === 'object' && typeof module.exports === 'object') {
 	module.exports = unitFactory;
 }
